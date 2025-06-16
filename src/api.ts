@@ -5,6 +5,13 @@ export const WORDPRESS_DOMAIN = 'https://www.baariafilmfestival.com';
 export const WORDPRESS_API_URL_WP_V2 = `${WORDPRESS_DOMAIN}/wp-json/wp/v2`;
 export const WORDPRESS_API_URL_BAARIA_V1 = `${WORDPRESS_DOMAIN}/wp-json/baaria/v1`;
 
+const decodeHtml = (html: string) => {
+  const txt = document.createElement("textarea");
+  txt.innerHTML = html;
+  return txt.value;
+}
+
+
 const parseEventData = (eventPayload: any): BaariaEvent => {
   const details = eventPayload.event_details || {};
 
@@ -48,6 +55,9 @@ const parseEventData = (eventPayload: any): BaariaEvent => {
     bookings_enabled: details.bookings_enabled === undefined ? true : !!details.bookings_enabled,
     booking_not_required: !!details.booking_not_required,
     booking_status_message: details.booking_status_message || '',
+    categoria_evento: details.categoria_evento || 'Generale',
+    descrizione_breve: details.descrizione_breve || '',
+    location_principale: details.location_principale || 'Sede da definire',
   };
 
   return {
@@ -66,8 +76,25 @@ export const fetchEvents = async (): Promise<BaariaEvent[]> => {
     return response.data.map(parseEventData);
   } catch (error) {
     console.error('Errore nel recupero degli eventi:', error);
-    return [];
+    throw new Error('Impossibile recuperare la lista degli eventi.');
   }
+};
+
+export const fetchEventById = async (id: string): Promise<BaariaEvent | null> => {
+    if (!id) {
+        console.error("fetchEventById chiamato senza ID");
+        return null;
+    }
+    try {
+        const response = await axios.get<any>(`${WORDPRESS_API_URL_WP_V2}/movie/${id}?_fields=id,slug,title,event_details`);
+        if (response.data) {
+            return parseEventData(response.data);
+        }
+        return null;
+    } catch (error) {
+        console.error(`Errore nel recupero dell'evento con ID ${id}:`, error);
+        throw new Error(`Impossibile recuperare i dettagli dell'evento.`);
+    }
 };
 
 export const fetchOccupiedSeats = async (movieId: number, showtimeKey: string): Promise<string[]> => {
@@ -78,7 +105,7 @@ export const fetchOccupiedSeats = async (movieId: number, showtimeKey: string): 
     return response.data?.occupiedSeats || [];
   } catch (error) {
     console.error('Errore nel recupero dei posti occupati:', error);
-    return [];
+    throw new Error('Impossibile caricare lo stato dei posti.');
   }
 };
 
@@ -88,28 +115,9 @@ export const requestBookingWithPdf = async (bookingData: {
   phone: string;
   movie_id: number; 
   proiezione_id: number;
-  location_nome: string;
-  location_indirizzo?: string;
-  showtime_desc: string;
-  showtime_key: string;
   seats: string[];
 }) => {
-  const formData = new FormData();
-  formData.append('name', bookingData.name);
-  formData.append('email', bookingData.email);
-  formData.append('phone', bookingData.phone);
-  formData.append('movie_id', bookingData.movie_id.toString());
-  formData.append('proiezione_id', bookingData.proiezione_id.toString());
-  formData.append('location_nome', bookingData.location_nome);
-  if (bookingData.location_indirizzo) {
-    formData.append('location_indirizzo', bookingData.location_indirizzo);
-  }
-  formData.append('showtime_desc', bookingData.showtime_desc);
-  formData.append('showtime_key', bookingData.showtime_key);
-  bookingData.seats.forEach((seat, index) => {
-    formData.append(`seats[${index}]`, seat);
-  });
-  return axios.post(`${WORDPRESS_API_URL_BAARIA_V1}/booking-with-pdf`, formData);
+  return axios.post(`${WORDPRESS_API_URL_BAARIA_V1}/booking-with-pdf`, bookingData);
 };
 
 export const checkTokenValidity = async (token: string) => {

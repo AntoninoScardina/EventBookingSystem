@@ -15,15 +15,15 @@ export default function Header() {
           <a href="https://www.baariafilmfestival.com/">
             {/* Logo Desktop */}
             <img
-              src="https://www.baariafilmfestival.com/wp-content/uploads/2024/10/cropped-BAARIA_FILM_FESTIVAL-removebg-preview.png"
+              src="https://www.baariafilmfestival.com/wp-content/uploads/2025/06/LOGO_BFF_NERO.png"
               alt="Baarìa Film Festival"
               className="hidden md:block h-32"
             />
             {/* Logo Mobile */}
             <img
-              src="https://www.baariafilmfestival.com/wp-content/uploads/2024/10/cropped-BAARIA_FILM_FESTIVAL-removebg-preview.png"
+              src="https://www.baariafilmfestival.com/wp-content/uploads/2025/06/LOGO_BFF_NERO.png"
               alt="Baarìa Film Festival"
-              className="block md:hidden h-12"
+              className="block md:hidden h-24"
             />
           </a>
         </div>

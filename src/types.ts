@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export interface ProgrammazioneItem {
   proiezione_id: number;
   data_raw: string;
@@ -20,6 +22,9 @@ export interface ImageGalleriaItem {
 }
 
 export interface EventDetails {
+  ospite: string | null;
+  descrizione_breve: ReactNode;
+  categoria_evento: string;
   id: number;
   title: string;
   sinossi: string | null;
@@ -45,6 +50,7 @@ export interface EventDetails {
   bookings_enabled: boolean;
   booking_not_required: boolean;
   booking_status_message: string;
+  location_principale: string;
 }
 
 export interface BaariaEvent {
