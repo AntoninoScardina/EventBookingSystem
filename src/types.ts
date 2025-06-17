@@ -22,6 +22,8 @@ export interface ImageGalleriaItem {
 }
 
 export interface EventDetails {
+  anno: string;
+  paese: ReactNode;
   ospite: string | null;
   descrizione_breve: ReactNode;
   categoria_evento: string;
