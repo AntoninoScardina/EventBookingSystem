@@ -2,10 +2,6 @@ import {
   Loader2,
   ChevronLeft,
   Check,
-  Home,
-  Users,
-  Clapperboard,
-  Film,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import {
@@ -22,7 +18,8 @@ import EventDetail from "./components/EventDetail";
 import Header from "./components/header";
 import HomepageEventList from "./components/HomepageEventList";
 import SeatBooking from "./components/SeatBooking";
-import { BaariaEvent } from "./types";
+import AtolliBookingPage from "./components/AtolliBookingPage";
+import { BaariaEvent, GroupedEventProjection } from "./types";
 import { useBooking, BookingProvider } from "./contexts/BookingContext";
 import { fetchEventById, fetchEvents } from "./api";
 
@@ -66,8 +63,12 @@ const HomepageContainer: React.FC = () => {
 
 const EventDetailContainer: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
-  const { selectedEvent, setSelectedEvent, setSelectedProjection } =
-    useBooking();
+  const {
+    selectedEvent,
+    setSelectedEvent,
+    setSelectedProjection,
+    setSelectedEventGroup,
+  } = useBooking();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,8 +118,59 @@ const EventDetailContainer: React.FC = () => {
       event={selectedEvent}
       onSelectProjection={(p) => {
         setSelectedProjection(p);
+        setSelectedEventGroup(null); // Pulisce lo stato del gruppo
         navigate(`/evento/${selectedEvent.id}/prenota/${p.showtime_key}`);
       }}
+      onBack={() => navigate(-1)}
+    />
+  );
+};
+
+const AtolliBookingContainer: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const {
+    setSelectedEvent,
+    setSelectedProjection,
+    setBookingQuantity,
+    setSelectedEventGroup,
+  } = useBooking();
+
+  const { events: eventGroup, locationName } = (location.state || {}) as {
+    events: GroupedEventProjection[];
+    locationName: string;
+  };
+
+  useEffect(() => {
+    if (!eventGroup || eventGroup.length === 0) {
+      navigate("/", { replace: true });
+    }
+  }, [eventGroup, navigate]);
+
+  if (!eventGroup || eventGroup.length === 0) {
+    return (
+      <div className="text-center p-8 flex items-center justify-center">
+        <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
+      </div>
+    );
+  }
+
+  const handleProceedToCheckout = (quantity: number) => {
+    const representativeEvent = eventGroup[0].event;
+    const representativeProjection = eventGroup[0].projection;
+
+    setSelectedEvent(representativeEvent);
+    setSelectedEventGroup(eventGroup); // Imposta il gruppo di eventi nel contesto
+    setSelectedProjection(representativeProjection);
+    setBookingQuantity(quantity);
+    navigate("/checkout");
+  };
+
+  return (
+    <AtolliBookingPage
+      eventGroup={eventGroup}
+      locationName={locationName}
+      onProceedToCheckout={handleProceedToCheckout}
       onBack={() => navigate(-1)}
     />
   );
@@ -132,7 +184,6 @@ const SeatBookingContainer: React.FC = () => {
   const {
     selectedEvent,
     selectedProjection,
-    bookingQuantity,
     setBookingQuantity,
     setSelectedEvent,
     setSelectedProjection,
@@ -351,75 +402,16 @@ const TokenConfirmationPage: React.FC = () => {
   return <BookingConfirmation token={token} />;
 };
 
-const ProgressStepper: React.FC = () => {
-  const location = useLocation();
-  const currentPath = location.pathname;
-  let currentStepIndex = -1;
-  if (currentPath === "/") currentStepIndex = 0;
-  else if (
-    currentPath.startsWith("/evento/") &&
-    !currentPath.includes("/prenota")
-  )
-    currentStepIndex = 1;
-  else if (currentPath.includes("/prenota/")) currentStepIndex = 2;
-  else if (currentPath === "/checkout") currentStepIndex = 3;
-
-  if (["/richiesta-inviata", "/conferma-prenotazione"].includes(currentPath))
-    return null;
-
-  const steps = [
-    { i: Home, l: "Programma" },
-    { i: Film, l: "Dettaglio" },
-    { i: Users, l: "Posti" },
-    { i: Clapperboard, l: "Checkout" },
-  ];
-  return (
-    <div className="mb-10 mt-4 sm:mt-2">
-      <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8 tracking-tight">
-        Prenotazione
-      </h2>
-      <div className="flex items-center justify-center space-x-1 md:space-x-2 max-w-xl mx-auto">
-        {steps.map((step, index) => {
-          const isActive = index === currentStepIndex;
-          const isCompleted = index < currentStepIndex;
-          return (
-            <React.Fragment key={step.l}>
-              <div
-                className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all duration-300 font-medium shadow-sm border-2 ${
-                  isActive
-                    ? "bg-[#ebdaa8] text-gray-900 border-[#b08d57] scale-110"
-                    : isCompleted
-                    ? "bg-gray-800 text-[#ebdaa8] border-gray-700"
-                    : "bg-white text-gray-400 border-gray-300"
-                }`}
-              >
-                <step.i size={20} />
-              </div>
-              {index < steps.length - 1 && (
-                <div
-                  className={`h-1 flex-1 transition-all duration-500 rounded-full ${
-                    isCompleted ? "bg-gray-800" : "bg-gray-300"
-                  }`}
-                ></div>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 function App() {
-  const basename = "/programma";
+  // ...
   return (
     <BookingProvider>
-      <BrowserRouter basename={basename}>
+      <BrowserRouter basename={"/programma"}>
         <ScrollToTop />
         <div className="min-h-screen bg-gray-100 text-gray-800 selection:bg-[#ebdaa8]/50">
           <Header />
           <main className="container mx-auto py-2 px-4 relative">
-            <ProgressStepper />
+            {/* ... ProgressStepper ... */}
             <Routes>
               <Route path="/" element={<HomepageContainer />} />
               <Route
@@ -429,6 +421,10 @@ function App() {
               <Route
                 path="/evento/:eventId/prenota/:showtimeKey"
                 element={<SeatBookingContainer />}
+              />
+              <Route
+                path="/blocco-atolli"
+                element={<AtolliBookingContainer />}
               />
               <Route path="/checkout" element={<CheckoutContainer />} />
               <Route path="/richiesta-inviata" element={<RequestSentPage />} />

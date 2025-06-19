@@ -1,9 +1,11 @@
 import { createContext, ReactNode, useState, useCallback, useMemo, useContext } from "react";
-import { BaariaEvent, ProgrammazioneItem } from "../types";
+import { BaariaEvent, ProgrammazioneItem, GroupedEventProjection } from "../types";
 
 interface BookingContextType {
     selectedEvent: BaariaEvent | null;
     setSelectedEvent: (event: BaariaEvent | null) => void;
+    selectedEventGroup: GroupedEventProjection[] | null;
+    setSelectedEventGroup: (group: GroupedEventProjection[] | null) => void;
     selectedProjection: ProgrammazioneItem | null;
     setSelectedProjection: (projection: ProgrammazioneItem | null) => void;
     bookingQuantity: number;
@@ -19,6 +21,7 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [selectedEvent, setSelectedEvent] = useState<BaariaEvent | null>(null);
+    const [selectedEventGroup, setSelectedEventGroup] = useState<GroupedEventProjection[] | null>(null);
     const [selectedProjection, setSelectedProjection] = useState<ProgrammazioneItem | null>(null);
     const [bookingQuantity, setBookingQuantity] = useState(1);
     const [checkoutEmail, setCheckoutEmail] = useState<string | null>(null);
@@ -26,6 +29,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const resetBookingState = useCallback(() => {
         setSelectedEvent(null);
+        setSelectedEventGroup(null);
         setSelectedProjection(null);
         setBookingQuantity(1);
         setCheckoutEmail(null);
@@ -35,6 +39,8 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     const contextValue = useMemo(() => ({
         selectedEvent,
         setSelectedEvent,
+        selectedEventGroup,
+        setSelectedEventGroup,
         selectedProjection,
         setSelectedProjection,
         bookingQuantity,
@@ -44,7 +50,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
         bookingToken,
         setBookingToken,
         resetBookingState,
-    }), [selectedEvent, selectedProjection, bookingQuantity, checkoutEmail, bookingToken, resetBookingState]);
+    }), [selectedEvent, selectedEventGroup, selectedProjection, bookingQuantity, checkoutEmail, bookingToken, resetBookingState]);
 
     return (
         <BookingContext.Provider value={contextValue}>
