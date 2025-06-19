@@ -78,14 +78,18 @@ const EventDetailContainer: React.FC = () => {
       return;
     }
     const load = async () => {
+      setLoading(true);
       if (selectedEvent && selectedEvent.id.toString() === eventId) {
         setLoading(false);
         return;
       }
       try {
         const eventData = await fetchEventById(eventId);
-        if (typeof eventData !== 'undefined') setSelectedEvent(eventData);
-        else throw new Error("Evento non trovato.");
+        if (eventData) {
+          setSelectedEvent(eventData);
+        } else {
+          throw new Error("Evento non trovato.");
+        }
       } catch (err) {
         setError("Errore caricamento evento.");
       } finally {
@@ -130,40 +134,77 @@ const SeatBookingContainer: React.FC = () => {
     selectedProjection,
     bookingQuantity,
     setBookingQuantity,
+    setSelectedEvent,
     setSelectedProjection,
   } = useBooking();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!selectedEvent && eventId) {
-      navigate(`/evento/${eventId}`, { replace: true });
-      return;
-    }
-    if (
-      selectedEvent &&
-      (!selectedProjection || selectedProjection.showtime_key !== showtimeKey)
-    ) {
-      const projection = selectedEvent.event_details?.programmazione.find(
-        (p) => p.showtime_key === showtimeKey
-      );
-      if (projection) setSelectedProjection(projection);
-      else navigate(`/evento/${eventId}`, { replace: true });
-    }
+    const loadData = async () => {
+      if (!eventId || !showtimeKey) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      setLoading(true);
+      let eventToUse = selectedEvent;
+
+      if (!eventToUse || eventToUse.id.toString() !== eventId) {
+        try {
+          const eventData = await fetchEventById(eventId);
+          if (eventData) {
+            setSelectedEvent(eventData);
+            eventToUse = eventData;
+          } else {
+            throw new Error("Evento non trovato.");
+          }
+        } catch (err) {
+          setError("Impossibile caricare i dati dell'evento.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (eventToUse) {
+        const projection = eventToUse.event_details?.programmazione.find(
+          (p) => p.showtime_key === showtimeKey
+        );
+
+        if (projection) {
+          if (
+            !selectedProjection ||
+            selectedProjection.showtime_key !== projection.showtime_key
+          ) {
+            setSelectedProjection(projection);
+          }
+        } else {
+          navigate(`/evento/${eventId}`, { replace: true });
+        }
+      }
+      setLoading(false);
+    };
+
+    loadData();
   }, [
+    eventId,
+    showtimeKey,
     selectedEvent,
     selectedProjection,
-    showtimeKey,
-    eventId,
-    setSelectedProjection,
     navigate,
+    setSelectedEvent,
+    setSelectedProjection,
   ]);
 
-  if (!selectedEvent || !selectedProjection)
+  if (loading || !selectedEvent || !selectedProjection)
     return (
       <div className="text-center p-8">
         <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
       </div>
     );
+
+  if (error) return <div className="text-center p-8 text-red-600">{error}</div>;
 
   const decodeHtml = (html: string) => {
     const txt = document.createElement("textarea");
@@ -174,7 +215,7 @@ const SeatBookingContainer: React.FC = () => {
   return (
     <>
       <button
-        onClick={() => navigate(`/evento/${selectedEvent.id}`)}
+        onClick={() => navigate(-1)}
         className="mb-6 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md flex items-center gap-2"
       >
         <ChevronLeft className="h-5 w-5" /> Torna ai Dettagli

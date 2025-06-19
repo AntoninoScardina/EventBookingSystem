@@ -158,7 +158,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
             </p>
 
             {sortedDates.length > 1 && (
-                <div className="sticky top-0 bg-white bg-opacity-90 backdrop-blur-sm z-10 py-3">
+                <div className="top-0 bg-white bg-opacity-90 backdrop-blur-sm z-10 py-3">
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div className="w-full md:hidden">

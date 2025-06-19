@@ -3,7 +3,7 @@
  * Plugin Name: Baarìa Film Festival - Sistema di Prenotazione Eventi
  * Plugin URI:  https://www.baariafilmfestival.com
  * Description: Gestisce le prenotazioni per gli eventi del Baarìa Film Festival, con CPT Proiezioni e campi ACF programmatici.
- * Version:     1.5.0
+ * Version:     1.5.2
  * Author:      Antonino Scardina
  * Author URI:  https://www.antoninoscardina.com
  * License:     GPLv2 or later
@@ -275,8 +275,8 @@ function baaria_get_seat_layout($location_type = 'cinema_capitol') {
 
 function baaria_get_seat_assignment_order($location_type = 'cinema_capitol') {
     $order = [
-        'cinema_capitol' => ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'L', 'M', 'N', 'O'],
-        'villa_cattolica' => ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'L']
+        'cinema_capitol' => ['O', 'N', 'M', 'L', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'],
+        'villa_cattolica' => ['L', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A']
     ];
     return $order[$location_type] ?? $order['cinema_capitol'];
 }
@@ -291,9 +291,9 @@ function baaria_register_booking_api_routes_v8()
     ]);
 
     register_rest_route(BAARIA_BOOKING_NAMESPACE, '/confirm-booking-with-pdf', ['methods'  => 'POST', 'callback' => 'baaria_handle_confirm_booking_with_pdf_request_v6', 'permission_callback' => '__return_true']);
-    register_rest_route(BAARIA_BOOKING_NAMESPACE, '/occupied-seats', ['methods'  => 'GET', 'callback' => 'baaria_get_occupied_seats_request_v6', 'permission_callback' => '__return_true', 'args' => ['movie_id' => ['required' => true, 'validate_callback' => 'is_numeric'], 'showtime_key' => ['required' => true, 'sanitize_callback' => 'sanitize_text_field']]]);
+    register_rest_route(BAARIA_BOOKING_NAMESPACE, '/occupied-seats', ['methods'  => 'GET', 'callback' => 'baaria_get_occupied_seats_request_v6', 'permission_callback' => '__return_true', 'args' => ['movie_id' => ['required' => true, 'validate_callback' => function($param, $request, $key) { return is_numeric($param); }], 'showtime_key' => ['required' => true, 'sanitize_callback' => 'sanitize_text_field']]]);
     register_rest_route(BAARIA_BOOKING_NAMESPACE, '/check-token', ['methods'  => 'GET', 'callback' => 'baaria_check_confirmation_token_request_v6', 'permission_callback' => '__return_true', 'args' => ['token' => ['required' => true, 'sanitize_callback' => 'sanitize_text_field']]]);
-    register_rest_route(BAARIA_BOOKING_NAMESPACE, '/delete-booking', ['methods'  => 'POST', 'callback' => 'baaria_handle_delete_booking_request_v6', 'permission_callback' => fn() => current_user_can('manage_options'), 'args' => ['id' => ['required' => true, 'validate_callback' => 'is_numeric']]]);
+    register_rest_route(BAARIA_BOOKING_NAMESPACE, '/delete-booking', ['methods'  => 'POST', 'callback' => 'baaria_handle_delete_booking_request_v6', 'permission_callback' => fn() => current_user_can('manage_options'), 'args' => ['id' => ['required' => true, 'validate_callback' => function($param, $request, $key) { return is_numeric($param); }]]]);
     register_rest_route(BAARIA_BOOKING_NAMESPACE, '/get-bookings', ['methods'  => 'GET', 'callback' => 'baaria_get_all_bookings_request_v6', 'permission_callback' => fn() => current_user_can('manage_options')]);
 }
 
@@ -309,6 +309,11 @@ function baaria_handle_booking_with_pdf_request_v8(WP_REST_Request $request)
     if (empty($name) || !is_email($email) || empty($movie_id) || empty($proiezione_id) || $quantity <= 0) {
         return new WP_REST_Response(['success' => false, 'message' => 'Dati mancanti o non validi.'], 400);
     }
+
+    if ($quantity > 4) {
+        return new WP_REST_Response(['success' => false, 'message' => 'È possibile prenotare un massimo di 4 posti.'], 400);
+    }
+
     if (get_field('booking_not_required', $movie_id) || !get_field('enable_bookings', $movie_id)) {
         return new WP_REST_Response(['success' => false, 'message' => 'Prenotazioni non attive per questo evento.'], 403);
     }
@@ -327,6 +332,13 @@ function baaria_handle_booking_with_pdf_request_v8(WP_REST_Request $request)
         array_map('trim', explode(',', get_field('disabled_seats', $proiezione_id) ?: ''))
     );
     $unavailable_seats = array_filter(array_unique($unavailable_seats));
+
+    $total_seats_in_layout = array_sum(array_map('count', $layout));
+    $available_seats_count = $total_seats_in_layout - count($unavailable_seats);
+
+    if ($quantity > $available_seats_count) {
+        return new WP_REST_Response(['success' => false, 'message' => 'Posti non sufficienti. Posti disponibili: ' . $available_seats_count], 400);
+    }
 
     $assigned_seats = [];
     foreach ($assignment_order as $row) {
@@ -349,18 +361,21 @@ function baaria_handle_booking_with_pdf_request_v8(WP_REST_Request $request)
     if (is_wp_error($booking_id)) return new WP_REST_Response(['success' => false, 'message' => 'Errore creazione prenotazione.'], 500);
 
     $token = wp_generate_password(32, false);
+    
+    $date_obj = ($dr = get_field('data_proiezione', $proiezione_id)) ? DateTime::createFromFormat('Ymd', $dr) : null;
+    $showtime_desc = ($date_obj ? $date_obj->format('d/m/Y') : '') . ' - ' . get_field('orario_proiezione', $proiezione_id);
+
     update_post_meta($booking_id, '_customer_name', $name);
     update_post_meta($booking_id, '_customer_email', $email);
     update_post_meta($booking_id, '_customer_phone', $phone);
     update_post_meta($booking_id, '_movie_id', $movie_id);
     update_post_meta($booking_id, '_proiezione_id', $proiezione_id);
     update_post_meta($booking_id, '_showtime_key', $showtime_key);
+    update_post_meta($booking_id, '_showtime_description', $showtime_desc);
     update_post_meta($booking_id, '_seats', $assigned_seats);
     update_post_meta($booking_id, '_confirmation_token', $token);
     update_post_meta($booking_id, '_token_expiration', time() + 600);
     
-    $date_obj = ($dr = get_field('data_proiezione', $proiezione_id)) ? DateTime::createFromFormat('Ymd', $dr) : null;
-    $showtime_desc = ($date_obj ? date_i18n(get_option('date_format'), $date_obj->getTimestamp()) : '') . ' - ' . get_field('orario_proiezione', $proiezione_id);
     $location_name = get_field('nome_location_proiezione', $proiezione_id) ?: get_field('location_principale', $movie_id);
     
     $link = BAARIA_REACT_APP_URL . "/conferma-prenotazione?token=$token";
@@ -406,7 +421,7 @@ function baaria_handle_confirm_booking_with_pdf_request_v6(WP_REST_Request $requ
     $movie_title = get_the_title($movie_id);
     $pro_id = get_post_meta($booking_id, '_proiezione_id', true);
     $loc_name = get_field('nome_location_proiezione', $pro_id) ?: get_field('location_principale', $movie_id);
-    $showtime = get_post_meta($booking_id, '_showtime_description', true) ?: (get_field('data_proiezione', $pro_id) . ' ' . get_field('orario_proiezione', $pro_id));
+    $showtime = get_post_meta($booking_id, '_showtime_description', true);
     
     $subject = "Prenotazione confermata per $movie_title";
     $body = baaria_get_email_html_template_v6($name, $movie_title, $loc_name, $showtime, get_post_meta($booking_id, '_seats', true), null, true);
@@ -536,12 +551,25 @@ function baaria_generate_ticket_pdf_v6($booking_id) {
     $proiezione_id = get_post_meta($booking_id, '_proiezione_id', true);
     $location_name = get_field('nome_location_proiezione', $proiezione_id) ?: get_field('location_principale', $movie_id);
     $location_address = get_field('indirizzo_location_proiezione', $proiezione_id) ?: '';
-    $showtime_desc = get_post_meta($booking_id, '_showtime_description', true) ?: (get_field('data_proiezione', $proiezione_id) . ' ' . get_field('orario_proiezione', $proiezione_id));
-    $seats = implode(", ", get_post_meta($booking_id, '_seats', true) ?: []);
+    $showtime_desc = get_post_meta($booking_id, '_showtime_description', true);
+    
+    if (empty($showtime_desc) && $proiezione_id) {
+        $data_raw = get_field('data_proiezione', $proiezione_id);
+        $orario_raw = get_field('orario_proiezione', $proiezione_id);
+        $date_obj = $data_raw ? DateTime::createFromFormat('Ymd', $data_raw) : null;
+        if ($date_obj) {
+            $showtime_desc = $date_obj->format('d/m/Y') . ' - ' . $orario_raw;
+        } else {
+            $showtime_desc = $data_raw . ' ' . $orario_raw;
+        }
+    }
+
+    $seats_array = get_post_meta($booking_id, '_seats', true) ?: [];
+    $quantity = count($seats_array);
     $movie_title = get_the_title($movie_id);
     $booking_ref = "BFF-" . $booking_id . "-" . strtoupper(substr(md5($booking_id . $name), 0, 6));
 
-    $html = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><style>body{font-family:"DejaVu Sans",sans-serif;color:#333;line-height:1.6;margin:0;padding:0;font-size:11pt}.ticket{width:90%;max-width:700px;margin:20px auto;padding:25px;border:2px solid #b08d57;border-radius:10px;background:#fff;box-shadow:0 0 15px rgba(0,0,0,.1)}.header{text-align:center;border-bottom:2px solid #b08d57;padding-bottom:15px;margin-bottom:20px}.header h1{color:#2d2d2d;font-size:22px;margin:0 0 5px}.header p{color:#555;font-size:14px;margin:0}.details{margin:20px 0}.detail-row{margin-bottom:10px;padding:8px 10px;background:#f8f5f0;border-radius:5px;border-left:3px solid #b08d57}.detail-label{color:#555;font-size:10pt;display:block;margin-bottom:2px}.detail-value{color:#2d2d2d;font-size:12pt;font-weight:bold}.qr-code{text-align:center;margin:20px 0 10px}.qr-code img{max-width:120px;height:auto}.footer{text-align:center;margin-top:25px;padding-top:15px;border-top:1px solid #eee;color:#777;font-size:9pt}.booking-ref{text-align:center;font-size:10pt;color:#444;margin-bottom:15px}</style></head><body><div class="ticket"><div class="header"><h1>Baarìa Film Festival</h1><p>Biglietto di Ingresso / Conferma Prenotazione</p></div><div class="booking-ref">Rif. Prenotazione: <strong>' . esc_html($booking_ref) . '</strong></div><div class="details"><div class="detail-row"><span class="detail-label">Nominativo</span><span class="detail-value">' . esc_html($name) . '</span></div><div class="detail-row"><span class="detail-label">Evento</span><span class="detail-value">' . esc_html($movie_title) . '</span></div><div class="detail-row"><span class="detail-label">Location</span><span class="detail-value">' . esc_html($location_name) . ($location_address ? ' - ' . esc_html($location_address) : '') . '</span></div><div class="detail-row"><span class="detail-label">Data e Ora</span><span class="detail-value">' . esc_html($showtime_desc) . '</span></div><div class="detail-row"><span class="detail-label">Posti Assegnati</span><span class="detail-value">' . esc_html($seats) . '</span></div></div>';
+    $html = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><style>body{font-family:"DejaVu Sans",sans-serif;color:#333;line-height:1.6;margin:0;padding:0;font-size:11pt}.ticket{width:90%;max-width:700px;margin:20px auto;padding:25px;border:2px solid #b08d57;border-radius:10px;background:#fff;box-shadow:0 0 15px rgba(0,0,0,.1)}.header{text-align:center;border-bottom:2px solid #b08d57;padding-bottom:15px;margin-bottom:20px}.header h1{color:#2d2d2d;font-size:22px;margin:0 0 5px}.header p{color:#555;font-size:14px;margin:0}.details{margin:20px 0}.detail-row{margin-bottom:10px;padding:8px 10px;background:#f8f5f0;border-radius:5px;border-left:3px solid #b08d57}.detail-label{color:#555;font-size:10pt;display:block;margin-bottom:2px}.detail-value{color:#2d2d2d;font-size:12pt;font-weight:bold}.qr-code{text-align:center;margin:20px 0 10px}.qr-code img{max-width:120px;height:auto}.footer{text-align:center;margin-top:25px;padding-top:15px;border-top:1px solid #eee;color:#777;font-size:9pt}.booking-ref{text-align:center;font-size:10pt;color:#444;margin-bottom:15px}</style></head><body><div class="ticket"><div class="header"><h1>Baarìa Film Festival</h1><p>Biglietto di Ingresso / Conferma Prenotazione</p></div><div class="booking-ref">Rif. Prenotazione: <strong>' . esc_html($booking_ref) . '</strong></div><div class="details"><div class="detail-row"><span class="detail-label">Nominativo</span><span class="detail-value">' . esc_html($name) . '</span></div><div class="detail-row"><span class="detail-label">Evento</span><span class="detail-value">' . esc_html($movie_title) . '</span></div><div class="detail-row"><span class="detail-label">Location</span><span class="detail-value">' . esc_html($location_name) . ($location_address ? ' - ' . esc_html($location_address) : '') . '</span></div><div class="detail-row"><span class="detail-label">Data e Ora</span><span class="detail-value">' . esc_html($showtime_desc) . '</span></div><div class="detail-row"><span class="detail-label">Numero Posti</span><span class="detail-value">' . esc_html($quantity) . '</span></div><div class="detail-row"><span class="detail-label">Assegnazione Posti</span><span class="detail-value">I posti verranno assegnati direttamente all\'ingresso.</span></div></div>';
 
     if (class_exists('\chillerlan\QRCode\QRCode')) {
         $qr_data = json_encode(['booking_id' => $booking_id, 'ref' => $booking_ref]);
@@ -569,11 +597,11 @@ function baaria_generate_ticket_pdf_v6($booking_id) {
 
 function baaria_get_email_html_template_v6($name, $movie_title, $location_name, $showtime_desc, $seats_array, $confirmation_link, $is_final_confirmation)
 {
-    $seats = is_array($seats_array) ? implode(', ', $seats_array) : '';
+    $quantity = count($seats_array);
     $greeting = "Ciao " . esc_html($name) . ",";
-    $email_style = "body{font-family:Arial,sans-serif;line-height:1.6;color:#333;background-color:#f4f4f4;margin:0;padding:0}.container{max-width:600px;margin:20px auto;padding:25px;background-color:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:15px;border-bottom:1px solid #eee;margin-bottom:20px}.header h1{color:#b08d57;font-size:24px;margin:0}.content p{margin-bottom:15px;font-size:15px}.details-box{background:#f9f9f9;padding:15px;border-radius:5px;margin:20px 0;border-left:3px solid #b08d57}.details-box p{margin-bottom:8px;font-size:14px}.details-box strong{color:#444}.button-link{display:inline-block;background-color:#b08d57;color:#fff!important;padding:12px 25px;text-decoration:none;border-radius:5px;font-weight:bold;text-align:center;font-size:16px}.button-container{text-align:center;margin:25px 0}.footer{text-align:center;margin-top:25px;font-size:12px;color:#777}.footer a{color:#b08d57;text-decoration:none}";
+    $email_style = "body{font-family:Arial,sans-serif;line-height:1.6;color:#333333;background-color:#f4f4f4;margin:0;padding:0}.container{max-width:600px;margin:20px auto;padding:25px;background-color:#ffffff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:15px;border-bottom:1px solid #eee;margin-bottom:20px}.header h1{color:#b08d57;font-size:24px;margin:0}.content p{margin-bottom:15px;font-size:15px;color:#333333}.details-box{background:#f9f9f9;padding:15px;border-radius:5px;margin:20px 0;border-left:3px solid #b08d57}.details-box p{margin-bottom:8px;font-size:14px;color:#333333}.details-box strong{color:#000000}.button-link{display:inline-block;background-color:#b08d57;color:#ffffff!important;padding:12px 25px;text-decoration:none;border-radius:5px;font-weight:bold;text-align:center;font-size:16px}.button-container{text-align:center;margin:25px 0}.footer{text-align:center;margin-top:25px;font-size:12px;color:#777777}.footer a{color:#b08d57;text-decoration:none}";
     $intro_message = $is_final_confirmation ? "<p>La tua prenotazione per il Baarìa Film Festival è stata <strong>confermata con successo!</strong></p>" : "<p>Grazie per aver iniziato il processo di prenotazione. Manca solo un ultimo passo!</p>";
-    $details_html = "<div class='details-box'><p><strong>Evento:</strong> " . esc_html($movie_title) . "</p><p><strong>Location:</strong> " . esc_html($location_name) . "</p><p><strong>Data e Ora:</strong> " . esc_html($showtime_desc) . "</p><p><strong>Posti Assegnati:</strong> " . esc_html($seats) . "</p></div>";
+    $details_html = "<div class='details-box'><p><strong>Evento:</strong> " . esc_html($movie_title) . "</p><p><strong>Location:</strong> " . esc_html($location_name) . "</p><p><strong>Data e Ora:</strong> " . esc_html($showtime_desc) . "</p><p><strong>Numero Posti Prenotati:</strong> " . esc_html($quantity) . "</p></div><p style='font-size:13px;'><strong>Nota:</strong> I posti specifici verranno assegnati direttamente all'ingresso.</p>";
     $call_to_action = "";
     if (!$is_final_confirmation && $confirmation_link) {
         $call_to_action = "<p>Per finalizzare, clicca sul pulsante qui sotto entro <strong>10 minuti</strong>:</p><div class='button-container'><a href='" . esc_url($confirmation_link) . "' class='button-link'>Conferma la Prenotazione</a></div><p style='font-size:12px;text-align:center;'>Se non funziona, copia e incolla questo link nel browser:<br>" . esc_url($confirmation_link) . "</p>";
@@ -582,4 +610,3 @@ function baaria_get_email_html_template_v6($name, $movie_title, $location_name, 
     }
     return "<html><head><title>Baarìa Film Festival</title><style>" . $email_style . "</style></head><body><div class='container'><div class='header'><h1>Baarìa Film Festival</h1></div><div class='content'><p>$greeting</p>$intro_message$details_html$call_to_action<p>Cordiali saluti,<br>Il Team del Baarìa Film Festival</p></div><div class='footer'><p>&copy; " . date('Y') . " Baarìa Film Festival. <a href='https://www.baariafilmfestival.com/'>Visita il sito</a></p></div></div></body></html>";
 }
-

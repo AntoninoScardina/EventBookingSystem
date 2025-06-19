@@ -3,13 +3,6 @@ import { MapPin, Film as FilmIcon, Clock, Users, Film, Loader2 } from "lucide-re
 import { BaariaEvent, ProgrammazioneItem } from "../types";
 import { requestBookingWithPdf } from "../api";
 
-interface CheckoutProps {
-  eventData: BaariaEvent;
-  projectionData: ProgrammazioneItem;
-  seats: string[];
-  onCheckoutSuccess: (customerEmail: string) => void;
-}
-
 const Checkout: React.FC<{ eventData: BaariaEvent; projectionData: ProgrammazioneItem; quantity: number; onCheckoutSuccess: (customerEmail: string) => void; }> = ({ eventData, projectionData, quantity, onCheckoutSuccess }) => {
     const [customerInfo, setCustomerInfo] = useState({ name: "", email: "", phone: "" });
     const [errors, setErrors] = useState({ name: "", email: "", phone: "", submit: "" });
@@ -57,7 +50,7 @@ const Checkout: React.FC<{ eventData: BaariaEvent; projectionData: Programmazion
                     <div className="flex items-start"><Film className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">{eventData.title.rendered}</p></div></div>
                     <div className="flex items-start"><MapPin className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">{projectionData.location_nome}</p></div></div>
                     <div className="flex items-start"><Clock className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">{projectionData.data_formattata} - Ore: {projectionData.orario}</p></div></div>
-                    <div className="flex items-start"><Users className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">Numero Posti</p><p className="text-2xl font-bold text-white">{quantity}</p><p className="text-xs text-gray-400 mt-1">I posti verranno assegnati automaticamente.</p></div></div>
+                    <div className="flex items-start"><Users className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">Numero Posti</p><p className="text-2xl font-bold text-white">{quantity}</p><p className="text-xs text-gray-400 mt-1">Il posto verrà assegnato direttamente all'ingresso.</p></div></div>
                 </div>
                 <div className="text-lg font-semibold text-center mt-6 border-t border-gray-700 pt-4"><span className="text-gray-100">Evento gratuito</span></div>
             </div>

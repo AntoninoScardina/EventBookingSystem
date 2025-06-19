@@ -87,10 +87,10 @@ export const requestBookingWithPdf = async (bookingData: { name: string; email: 
     return axios.post(`${WORDPRESS_API_URL_BAARIA_V1}/booking-with-pdf`, bookingData);
 };
 
-const checkTokenValidity = async (token: string) => {
+export const checkTokenValidity = async (token: string) => {
     return axios.get(`${WORDPRESS_API_URL_BAARIA_V1}/check-token?token=${token}`);
 };
 
-const confirmBookingWithPdf = async (token: string) => {
+export const confirmBookingWithPdf = async (token: string) => {
     return axios.post(`${WORDPRESS_API_URL_BAARIA_V1}/confirm-booking-with-pdf`, { token });
 };
