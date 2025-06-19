@@ -235,7 +235,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                                                             <div className="flex items-start gap-4">
                                                                 <div className="w-[100px] md:w-[120px] flex-shrink-0 flex flex-col items-center justify-center bg-gray-100 p-2 rounded-md aspect-[2/3]">
                                                                     <Users size={32} className="text-gray-500 mb-2" />
-                                                                    <span className="text-center text-xs font-semibold text-gray-600">Programma Unico</span>
+                                                                    <span className="text-center text-xs font-semibold text-gray-600">Cortometraggi</span>
                                                                 </div>
                                                                 <div className="flex-grow">
                                                                     <div className="flex items-center gap-2 text-xl font-bold text-gray-800 mb-2">

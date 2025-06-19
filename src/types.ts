@@ -15,6 +15,7 @@ export interface ProgrammazioneItem {
     location_type: 'cinema_capitol' | 'villa_cattolica';
     vip_seats: string[];
     disabled_seats: string[];
+    blocco_prenotabile: boolean;
 }
 
 export interface ImageGalleriaItem {
