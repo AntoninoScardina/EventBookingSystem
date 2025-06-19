@@ -56,7 +56,7 @@ const HomepageContainer: React.FC = () => {
 
   if (loading)
     return (
-      <div className="text-center p-8">
+      <div className="text-center p-8 flex items-center justify-center">
         <Loader2 className="animate-spin h-16 w-16 text-gray-400" />
       </div>
     );
@@ -101,7 +101,7 @@ const EventDetailContainer: React.FC = () => {
 
   if (loading)
     return (
-      <div className="text-center p-8">
+      <div className="text-center p-8 flex items-center justify-center">
         <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
       </div>
     );
@@ -199,7 +199,7 @@ const SeatBookingContainer: React.FC = () => {
 
   if (loading || !selectedEvent || !selectedProjection)
     return (
-      <div className="text-center p-8">
+      <div className="text-center p-8 flex items-center justify-center">
         <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
       </div>
     );
@@ -259,7 +259,7 @@ const CheckoutContainer: React.FC = () => {
 
   if (!selectedEvent || !selectedProjection || bookingQuantity === 0)
     return (
-      <div className="text-center p-8">
+      <div className="text-center p-8 flex items-center justify-center">
         <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
       </div>
     );
@@ -344,7 +344,7 @@ const TokenConfirmationPage: React.FC = () => {
 
   if (!token)
     return (
-      <div className="text-center p-8">
+      <div className="text-center p-8 flex items-center justify-center">
         <Loader2 className="animate-spin h-12 w-12 text-gray-400" />
       </div>
     );
