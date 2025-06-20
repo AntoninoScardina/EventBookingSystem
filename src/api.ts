@@ -27,6 +27,7 @@ const parseEventData = (eventPayload: any): BaariaEvent => {
         booking_status_message: prog.booking_status_message,
         blocco_prenotabile: prog.blocco_prenotabile,
         associated_movie_ids: prog.associated_movie_ids || [],
+        max_seats_per_booking: prog.max_seats_per_booking || 4,
     }));
 
     const eventDetailsData: EventDetails = {
@@ -78,14 +79,14 @@ export const fetchEventById = async (id: string): Promise<BaariaEvent | null> =>
     return response.data ? parseEventData(response.data) : null;
 };
 
-export const fetchOccupiedSeats = async (movieId: number, showtimeKey: string): Promise<string[]> => {
+export const fetchOccupiedSeats = async (proiezioneId: number): Promise<string[]> => {
     const response = await axios.get<{ occupiedSeats: string[] }>(
-        `${WORDPRESS_API_URL_BAARIA_V1}/occupied-seats?movie_id=${movieId}&showtime_key=${encodeURIComponent(showtimeKey)}`
+        `${WORDPRESS_API_URL_BAARIA_V1}/occupied-seats?proiezione_id=${proiezioneId}&cb=${new Date().getTime()}`
     );
     return response.data?.occupiedSeats || [];
 };
 
-export const requestBookingWithPdf = async (bookingData: { name: string; email: string; phone: string; movie_id: number; proiezione_id: number; quantity: number; }) => {
+export const requestBookingWithPdf = async (bookingData: { name: string; email: string; phone: string; proiezione_id: number; quantity: number; }) => {
     return axios.post(`${WORDPRESS_API_URL_BAARIA_V1}/booking-with-pdf`, bookingData);
 };
 

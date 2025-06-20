@@ -20,6 +20,7 @@ export interface ProgrammazioneItem {
     booking_status_message: string;
     blocco_prenotabile: boolean;
     associated_movie_ids: number[];
+    max_seats_per_booking: number;
 }
 
 export interface ImageGalleriaItem {

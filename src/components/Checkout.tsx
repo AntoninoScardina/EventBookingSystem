@@ -4,7 +4,12 @@ import { BaariaEvent, ProgrammazioneItem } from "../types";
 import { useBooking } from "../contexts/BookingContext";
 import { requestBookingWithPdf } from "../api";
 
-const Checkout: React.FC<{ eventData: BaariaEvent; projectionData: ProgrammazioneItem; quantity: number; onCheckoutSuccess: (customerEmail: string) => void; }> = ({ eventData, projectionData, quantity, onCheckoutSuccess }) => {
+const Checkout: React.FC<{
+  eventData: BaariaEvent;
+  projectionData: ProgrammazioneItem;
+  quantity: number;
+  onCheckoutSuccess: (customerEmail: string) => void;
+}> = ({ eventData, projectionData, quantity, onCheckoutSuccess }) => {
     const { selectedEventGroup } = useBooking();
     const [customerInfo, setCustomerInfo] = useState({ name: "", email: "", phone: "" });
     const [errors, setErrors] = useState({ name: "", email: "", phone: "", submit: "" });
@@ -33,7 +38,11 @@ const Checkout: React.FC<{ eventData: BaariaEvent; projectionData: Programmazion
             setIsSubmitting(true);
             setErrors(prev => ({ ...prev, submit: "" }));
             try {
-                const response = await requestBookingWithPdf({ ...customerInfo, movie_id: eventData.id, proiezione_id: projectionData.proiezione_id, quantity });
+                const response = await requestBookingWithPdf({ 
+                    ...customerInfo, 
+                    proiezione_id: projectionData.proiezione_id, 
+                    quantity 
+                });
                 if (response.data.success) onCheckoutSuccess(customerInfo.email);
                 else setErrors(prev => ({ ...prev, submit: response.data.message || "Errore durante la prenotazione." }));
             } catch (error: any) {
@@ -45,30 +54,22 @@ const Checkout: React.FC<{ eventData: BaariaEvent; projectionData: Programmazion
     };
     
     const isEventGroup = selectedEventGroup && selectedEventGroup.length > 0;
+    const displayEvents = isEventGroup ? selectedEventGroup.map(item => item.event) : [eventData];
 
     return (
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-gray-800 p-6 rounded-lg">
                 <h3 className="text-xl font-semibold mb-4 text-[#ebdaa8]">Riepilogo Prenotazione</h3>
                 <div className="space-y-3">
-                    {isEventGroup ? (
-                        <div className="flex items-start">
-                            <FilmIcon className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" />
-                            <div>
-                                <p className="font-medium text-gray-100">Programma Cortometraggi: ATOLLI</p>
-                                <div className="text-sm text-gray-300 mt-2">
-                                    <ul className="list-disc pl-5 space-y-1">
-                                        {selectedEventGroup.map(({event}) => <li key={event.id}>{event.title.rendered}</li>)}
-                                    </ul>
-                                </div>
-                            </div>
+                    <div className="flex items-start">
+                        <FilmIcon className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" />
+                        <div>
+                            {displayEvents.map(event => (
+                                <p key={event.id} className="font-medium text-gray-100">{event.title.rendered}</p>
+                            ))}
+                            {isEventGroup && <p className="font-medium text-gray-100 mt-2">Programma Cortometraggi: ATOLLI</p>}
                         </div>
-                    ) : (
-                        <div className="flex items-start">
-                            <FilmIcon className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" />
-                            <div><p className="font-medium text-gray-100">{eventData.title.rendered}</p></div>
-                        </div>
-                    )}
+                    </div>
                     <div className="flex items-start"><MapPin className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">{projectionData.location_nome}</p></div></div>
                     <div className="flex items-start"><Clock className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">{projectionData.data_formattata} - Ore: {projectionData.orario}</p></div></div>
                     <div className="flex items-start"><Users className="h-5 w-5 text-gray-400 mr-3 mt-1 shrink-0" /><div><p className="font-medium text-gray-100">Numero Posti</p><p className="text-2xl font-bold text-white">{quantity}</p><p className="text-xs text-gray-400 mt-1">Il posto verrà assegnato direttamente all'ingresso.</p></div></div>

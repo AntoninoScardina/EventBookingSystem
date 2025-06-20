@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Info, Loader2, Armchair, Star, Users } from "lucide-react";
 import { fetchOccupiedSeats } from "../api";
 import { ProgrammazioneItem } from "../types";
 
 const SeatBooking: React.FC<{
   onProceedToCheckout: (quantity: number) => void;
-  proiezioneId: number;
+  movieId: number;
+  showtime: string;
   projection: ProgrammazioneItem;
-}> = ({ onProceedToCheckout, proiezioneId, projection }) => {
+}> = ({ onProceedToCheckout, movieId, projection }) => {
   const [quantity, setQuantity] = useState(1);
   const [occupiedSeats, setOccupiedSeats] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,17 +63,28 @@ const SeatBooking: React.FC<{
 
   useEffect(() => {
     setLoading(true);
-    fetchOccupiedSeats(proiezioneId)
+    fetchOccupiedSeats(movieId, projection.showtime_key)
       .then(setOccupiedSeats)
       .catch(() => setError("Errore nel caricamento dei posti."))
       .finally(() => setLoading(false));
-  }, [proiezioneId]);
+  }, [movieId, projection.showtime_key]);
 
   const layout =
     seatLayouts[projection.location_type] || seatLayouts.cinema_capitol;
   const rows = Object.keys(layout).sort((a, b) => b.localeCompare(a));
   const maxCols = Math.max(0, ...Object.values(layout).map((r) => Math.max(0, ...r)));
   const totalCols = Array.from({ length: maxCols }, (_, i) => i + 1);
+
+  const availableSeatsCount = useMemo(() => {
+    const totalSeatsInLayout = Object.values(layout).flat().length;
+    const unavailableSeats = [...occupiedSeats, ...projection.vip_seats, ...projection.disabled_seats];
+    return totalSeatsInLayout - new Set(unavailableSeats).size;
+  }, [occupiedSeats, projection, layout]);
+
+  const maxQuantity = useMemo(() => {
+      return Math.min(projection.max_seats_per_booking || 4, availableSeatsCount);
+  },[projection.max_seats_per_booking, availableSeatsCount]);
+
 
   const getSeatStatus = (seat: string) => {
     if (occupiedSeats.includes(seat)) return "occupied";
@@ -102,14 +114,16 @@ const SeatBooking: React.FC<{
             <input
               type="number"
               min="1"
-              max="10"
+              max={maxQuantity > 0 ? maxQuantity : 1}
               value={quantity}
               onChange={(e) =>
-                setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))
+                setQuantity(Math.min(maxQuantity, Math.max(1, parseInt(e.target.value, 10) || 1)))
               }
               className="w-full p-3 bg-gray-700 text-white rounded-md text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-[#ebdaa8]"
             />
             <p className="text-xs text-gray-400 mt-2 text-center">
+             Massimo {projection.max_seats_per_booking || 4} posti per prenotazione. Disponibilità: {availableSeatsCount} posti.
+             <br/>
               Il posto verrà assegnato direttamente all'ingresso.
             </p>
           </div>
