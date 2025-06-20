@@ -83,7 +83,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onSelectProjection, on
                         <img src={details.locandina_url || "https://placehold.co/400x600/3A3A3A/EAA949?text=Evento"} alt={`Locandina ${details.title}`} className="w-full h-auto object-contain md:object-cover md:max-h-[700px]" onError={(e) => (e.currentTarget.src = "https://placehold.co/400x600/3A3A3A/EAA949?text=Locandina+Non+Disponibile")} />
                     </div>
                     <div className="p-6 md:p-8 md:w-3/5 xl:w-2/3">
-                        <h1 className="text-4xl lg:text-5xl font-extrabold text-[#ebdaa8] mb-3 tracking-tight" dangerouslySetInnerHTML={{ __html: decodeHtml(details.title) }}></h1>
+                        <h1 className="text-4xl lg:text-5xl font-bold text-[#ebdaa8] mb-3 tracking-tight" dangerouslySetInnerHTML={{ __html: decodeHtml(details.title) }}></h1>
                         <div className="flex flex-wrap gap-x-3 gap-y-2 mb-5">
                             {details.genere && <span className="bg-gray-700 px-3 py-1.5 rounded-full text-xs font-medium text-gray-200 shadow">{details.genere}</span>}
                             {details.tipo_film && <span className="bg-gray-700 px-3 py-1.5 rounded-full text-xs font-medium text-gray-200 shadow">{details.tipo_film}</span>}

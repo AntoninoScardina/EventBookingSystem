@@ -26,6 +26,7 @@ const parseEventData = (eventPayload: any): BaariaEvent => {
         booking_not_required: prog.booking_not_required,
         booking_status_message: prog.booking_status_message,
         blocco_prenotabile: prog.blocco_prenotabile,
+        associated_movie_ids: prog.associated_movie_ids || [],
     }));
 
     const eventDetailsData: EventDetails = {
