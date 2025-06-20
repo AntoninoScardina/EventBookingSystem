@@ -16,7 +16,6 @@ import {
   CalendarDays,
   Download,
   ChevronDown,
-  Layers,
 } from "lucide-react";
 
 interface FlattenedEvent {
@@ -32,18 +31,54 @@ const decodeHtml = (html: string) => {
 };
 
 const getAdjustedSortKey = (key: string | undefined): string => {
-  if (!key || key.length < 12) return key || "";
-  const hour = parseInt(key.substring(8, 10), 10);
+    if (!key) return "0";
+    const datePart = key.substring(0, 8);
+    const timePart = key.substring(8).padEnd(6, '0');
+    const normalizedKey = datePart + timePart;
 
-  if (hour < 5) {
-    const baseDate = key.substring(0, 8);
-    const originalHour = parseInt(key.substring(8, 10), 10);
-    const minutePart = key.substring(10, 12);
-    const adjustedHour = (originalHour + 24).toString().padStart(2, "0");
-    return `${baseDate}${adjustedHour}${minutePart}`;
-  }
-  return key;
+    const hour = parseInt(normalizedKey.substring(8, 10), 10);
+
+    if (hour < 5) {
+        const baseDate = normalizedKey.substring(0, 8);
+        const originalHour = parseInt(normalizedKey.substring(8, 10), 10);
+        const minutePart = normalizedKey.substring(10, 12);
+        const secondPart = normalizedKey.substring(12, 14);
+        const adjustedHour = (originalHour + 24).toString().padStart(2, "0");
+        return `${baseDate}${adjustedHour}${minutePart}${secondPart}`;
+    }
+    return normalizedKey;
 };
+
+const getLogicalDateKey = (projection: ProgrammazioneItem): string => {
+    const key = projection.datetime_sort_key || `${projection.data_raw}${projection.orario?.replace(/:/g, '') || '0000'}`;
+    const rawDate = projection.data_raw?.trim();
+
+    if (!rawDate || !key ) return rawDate || 'Data non definita';
+
+    const timePart = key.substring(8);
+    const hour = timePart.length >= 2 ? parseInt(timePart.substring(0, 2), 10) : 0;
+    
+    if (hour < 5) {
+        try {
+            const year = parseInt(rawDate.substring(0, 4), 10);
+            const month = parseInt(rawDate.substring(4, 6), 10) - 1; 
+            const day = parseInt(rawDate.substring(6, 8), 10);
+            
+            const dateObj = new Date(Date.UTC(year, month, day));
+            dateObj.setUTCDate(dateObj.getUTCDate() - 1);
+            
+            const prevYear = dateObj.getUTCFullYear();
+            const prevMonth = (dateObj.getUTCMonth() + 1).toString().padStart(2, '0');
+            const prevDay = dateObj.getUTCDate().toString().padStart(2, '0');
+
+            return `${prevYear}${prevMonth}${prevDay}`;
+        } catch {
+            return rawDate; 
+        }
+    }
+    return rawDate;
+};
+
 
 const formatDateForDisplay = (dateKey: string): string => {
   try {
@@ -86,7 +121,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const groupedByDate = useMemo(() => {
-    const flattened: FlattenedEvent[] = events
+    const flattened: (FlattenedEvent & { logicalDateKey: string })[] = events
       .flatMap(
         (event) =>
           event.event_details?.programmazione?.map((projection) => ({
@@ -95,15 +130,16 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
             adjustedSortKey: getAdjustedSortKey(
               projection.datetime_sort_key ||
                 `${projection.data_raw}${
-                  projection.orario?.replace(":", "") || "0000"
+                  projection.orario?.replace(/:/g, '') || "0000"
                 }`
             ),
+            logicalDateKey: getLogicalDateKey(projection),
           })) || []
       )
       .sort((a, b) => a.adjustedSortKey.localeCompare(b.adjustedSortKey));
 
     return flattened.reduce((acc, item) => {
-      const date = item.projection.data_raw?.trim() || "Data non definita";
+      const date = item.logicalDateKey;
       const location =
         item.projection.location_nome?.trim() || "Sede non definita";
       const category =
@@ -116,7 +152,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
 
       acc[date][location][category].push(item);
       return acc;
-    }, {} as { [date: string]: { [location: string]: { [category: string]: FlattenedEvent[] } } });
+    }, {} as { [date: string]: { [location: string]: { [category: string]: (FlattenedEvent & { logicalDateKey: string })[] } } });
   }, [events]);
 
   const sortedDates = Object.keys(groupedByDate).sort((a, b) =>
@@ -136,8 +172,8 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-4xl font-extrabold text-center text-gray-800 mb-2 font-f">
-        Programma del <br></br>Baarìa Film Festival
+      <h2 className="text-4xl font-extrabold text-center text-gray-800 mb-2">
+        Programma del Festival
       </h2>
       <p className="text-center text-base text-gray-600 italic -mt-4 mb-2 max-w-2xl mx-auto px-4">
         Il programma potrebbe subire variazioni.
@@ -216,7 +252,11 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
         <div className="space-y-12">
           {filteredDates.map((date) => {
             const locationsForDate = groupedByDate[date];
-            const sortedLocations = Object.keys(locationsForDate).sort();
+            const sortedLocations = Object.keys(locationsForDate).sort((a, b) => {
+                const firstEventA = locationsForDate[a][Object.keys(locationsForDate[a])[0]][0];
+                const firstEventB = locationsForDate[b][Object.keys(locationsForDate[b])[0]][0];
+                return firstEventA.adjustedSortKey.localeCompare(firstEventB.adjustedSortKey);
+            });
 
             return (
               <div key={date}>
@@ -228,7 +268,11 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                     const categoriesForLocation = locationsForDate[location];
                     const sortedCategories = Object.keys(
                       categoriesForLocation
-                    ).sort();
+                    ).sort((a, b) => {
+                        const firstEventA = categoriesForLocation[a][0];
+                        const firstEventB = categoriesForLocation[b][0];
+                        return firstEventA.adjustedSortKey.localeCompare(firstEventB.adjustedSortKey);
+                    });
 
                     return (
                       <section key={location}>
@@ -246,10 +290,10 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                                   if (!acc[projId]) acc[projId] = [];
                                   acc[projId].push(item);
                                   return acc;
-                                }, {} as { [projId: string]: FlattenedEvent[] });
+                                }, {} as { [projId: string]: (FlattenedEvent & { logicalDateKey: string })[] });
                               
                               const categoryHeader = (
-                                <li className="pt-4 pb-2 px-3" key={category}>
+                                <li className="pt-4 pb-2 px-3 bg-gray-50" key={category}>
                                     <h4 className="text-lg font-semibold text-gray-700 flex items-center gap-3">
                                         <Film className="lucide lucide-film text-[#b08d57]" />
                                         {category}
@@ -267,7 +311,13 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                                     const firstItem = group[0];
                                     const projection =
                                       firstItem.projection;
-                                    const totalDuration = group.reduce(
+
+                                    console.log(projection);
+                                    const orderedMovieIds = projection.associated_movie_ids || [];
+                                    const eventMap = new Map(group.map(item => [item.event.id, item]));
+                                    const orderedGroup = orderedMovieIds.map(id => eventMap.get(id)).filter(Boolean) as typeof group;
+                                    
+                                    const totalDuration = orderedGroup.reduce(
                                       (sum, curr) =>
                                         sum +
                                         (curr.event.event_details
@@ -275,7 +325,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                                       0
                                     );
                                     const eventGroupForNav: GroupedEventProjection[] =
-                                      group.map((item) => ({
+                                      orderedGroup.map((item) => ({
                                         event: item.event,
                                         projection: item.projection,
                                       }));
@@ -286,7 +336,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div className="md:col-span-1 pl-5 border-l-2 border-gray-200 space-y-4">
-                                                    {group.map(({ event }) => (
+                                                    {orderedGroup.map(({ event }) => (
                                                         <div key={event.id}>
                                                             <h6 className="font-semibold text-base text-gray-800" dangerouslySetInnerHTML={{ __html: decodeHtml(event.event_details.title) }}></h6>
                                                             <p className="text-sm text-gray-600">{event.event_details.regia ? `Regia: ${event.event_details.regia}` : ''} {event.event_details.durata_minuti ? `(${event.event_details.durata_minuti} min)` : ''}</p>
@@ -295,7 +345,7 @@ const HomepageEventList: React.FC<{ events: BaariaEvent[] }> = ({ events }) => {
                                                 </div>
 
                                                 <div className="md:col-span-2 grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                                    {group.map(({event}) => (
+                                                    {orderedGroup.map(({event}) => (
                                                         <div key={event.id} className="w-full aspect-[2/3] bg-gray-200 rounded-md overflow-hidden shadow-sm">
                                                             <img src={event.event_details.locandina_url || 'https://placehold.co/200x300/e2e8f0/475569?text=N/A'} alt={`Locandina di ${event.event_details.title}`} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://placehold.co/200x300/e2e8f0/475569?text=N/A')}/>
                                                         </div>

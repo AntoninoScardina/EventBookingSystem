@@ -19,6 +19,7 @@ export interface ProgrammazioneItem {
     booking_not_required: boolean;
     booking_status_message: string;
     blocco_prenotabile: boolean;
+    associated_movie_ids: number[];
 }
 
 export interface ImageGalleriaItem {
