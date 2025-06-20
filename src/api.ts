@@ -22,6 +22,10 @@ const parseEventData = (eventPayload: any): BaariaEvent => {
         location_type: prog.location_type || 'cinema_capitol',
         vip_seats: prog.vip_seats || [],
         disabled_seats: prog.disabled_seats || [],
+        bookings_enabled: prog.bookings_enabled,
+        booking_not_required: prog.booking_not_required,
+        booking_status_message: prog.booking_status_message,
+        blocco_prenotabile: prog.blocco_prenotabile,
     }));
 
     const eventDetailsData: EventDetails = {
@@ -47,9 +51,6 @@ const parseEventData = (eventPayload: any): BaariaEvent => {
         casa_produzione: details.casa_produzione || null,
         paese_produzione: details.paese_produzione || null,
         programmazione: programmazione,
-        bookings_enabled: details.bookings_enabled === undefined ? true : !!details.bookings_enabled,
-        booking_not_required: !!details.booking_not_required,
-        booking_status_message: details.booking_status_message || '',
         categoria_evento: details.categoria_evento || 'Generale',
         descrizione_breve: details.descrizione_breve || '',
         location_principale: details.location_principale || 'Sede da definire',

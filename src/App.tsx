@@ -19,6 +19,7 @@ import Header from "./components/header";
 import HomepageEventList from "./components/HomepageEventList";
 import SeatBooking from "./components/SeatBooking";
 import AtolliBookingPage from "./components/AtolliBookingPage";
+import BookingStepper from "./components/BookingStepper";
 import { BaariaEvent, GroupedEventProjection } from "./types";
 import { useBooking, BookingProvider } from "./contexts/BookingContext";
 import { fetchEventById, fetchEvents } from "./api";
@@ -30,6 +31,67 @@ const ScrollToTop: React.FC = () => {
   }, [pathname]);
   return null;
 };
+
+const AppContent: React.FC = () => {
+    const location = useLocation();
+    const [step, setStep] = useState(0);
+
+    useEffect(() => {
+        const path = location.pathname;
+        if (path === '/') {
+            setStep(0);
+        } else if (path.startsWith('/evento') || path.startsWith('/blocco-atolli')) {
+            setStep(2);
+        } else if (path.startsWith('/checkout')) {
+            setStep(3);
+        } else if (path.startsWith('/richiesta-inviata') || path.startsWith('/conferma-prenotazione')) {
+            setStep(4);
+        } else {
+            setStep(0);
+        }
+    }, [location]);
+
+    return (
+        <div className="min-h-screen bg-gray-100 text-gray-800 selection:bg-[#ebdaa8]/50">
+            <Header />
+            <main className="container mx-auto py-2 px-4 relative">
+                {step > 1 && <BookingStepper currentStep={step} />}
+                <Routes>
+                    <Route path="/" element={<HomepageContainer />} />
+                    <Route
+                        path="/evento/:eventId"
+                        element={<EventDetailContainer />}
+                    />
+                    <Route
+                        path="/evento/:eventId/prenota/:showtimeKey"
+                        element={<SeatBookingContainer />}
+                    />
+                    <Route
+                        path="/blocco-atolli"
+                        element={<AtolliBookingContainer />}
+                    />
+                    <Route path="/checkout" element={<CheckoutContainer />} />
+                    <Route path="/richiesta-inviata" element={<RequestSentPage />} />
+                    <Route
+                        path="/conferma-prenotazione"
+                        element={<TokenConfirmationPage />}
+                    />
+                    <Route
+                        path="*"
+                        element={
+                            <div className="text-center py-20">
+                                <h1 className="text-4xl font-bold">404 - Not Found</h1>
+                            </div>
+                        }
+                    />
+                </Routes>
+            </main>
+            <footer className="text-center py-10 text-gray-500 border-t mt-16">
+                <p>Baarìa Film Festival &copy; {new Date().getFullYear()}</p>
+            </footer>
+        </div>
+    )
+}
 
 const HomepageContainer: React.FC = () => {
   const [events, setEvents] = useState<BaariaEvent[]>([]);
@@ -118,7 +180,7 @@ const EventDetailContainer: React.FC = () => {
       event={selectedEvent}
       onSelectProjection={(p) => {
         setSelectedProjection(p);
-        setSelectedEventGroup(null); // Pulisce lo stato del gruppo
+        setSelectedEventGroup(null);
         navigate(`/evento/${selectedEvent.id}/prenota/${p.showtime_key}`);
       }}
       onBack={() => navigate(-1)}
@@ -160,7 +222,7 @@ const AtolliBookingContainer: React.FC = () => {
     const representativeProjection = eventGroup[0].projection;
 
     setSelectedEvent(representativeEvent);
-    setSelectedEventGroup(eventGroup); // Imposta il gruppo di eventi nel contesto
+    setSelectedEventGroup(eventGroup);
     setSelectedProjection(representativeProjection);
     setBookingQuantity(quantity);
     navigate("/checkout");
@@ -403,49 +465,11 @@ const TokenConfirmationPage: React.FC = () => {
 };
 
 function App() {
-  // ...
   return (
     <BookingProvider>
       <BrowserRouter basename={"/programma"}>
         <ScrollToTop />
-        <div className="min-h-screen bg-gray-100 text-gray-800 selection:bg-[#ebdaa8]/50">
-          <Header />
-          <main className="container mx-auto py-2 px-4 relative">
-            {/* ... ProgressStepper ... */}
-            <Routes>
-              <Route path="/" element={<HomepageContainer />} />
-              <Route
-                path="/evento/:eventId"
-                element={<EventDetailContainer />}
-              />
-              <Route
-                path="/evento/:eventId/prenota/:showtimeKey"
-                element={<SeatBookingContainer />}
-              />
-              <Route
-                path="/blocco-atolli"
-                element={<AtolliBookingContainer />}
-              />
-              <Route path="/checkout" element={<CheckoutContainer />} />
-              <Route path="/richiesta-inviata" element={<RequestSentPage />} />
-              <Route
-                path="/conferma-prenotazione"
-                element={<TokenConfirmationPage />}
-              />
-              <Route
-                path="*"
-                element={
-                  <div className="text-center py-20">
-                    <h1 className="text-4xl font-bold">404 - Not Found</h1>
-                  </div>
-                }
-              />
-            </Routes>
-          </main>
-          <footer className="text-center py-10 text-gray-500 border-t mt-16">
-            <p>Baarìa Film Festival &copy; {new Date().getFullYear()}</p>
-          </footer>
-        </div>
+        <AppContent />
       </BrowserRouter>
     </BookingProvider>
   );

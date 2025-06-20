@@ -24,7 +24,7 @@ const AtolliBookingPage: React.FC<AtolliBookingPageProps> = ({ eventGroup, locat
     
     const representativeProjection = eventGroup[0].projection;
     const representativeEvent = eventGroup[0].event;
-    const isBookingEnabled = representativeProjection.blocco_prenotabile;
+    const isBookingEnabled = representativeProjection.bookings_enabled;
     const totalDuration = eventGroup.reduce((sum, curr) => sum + (curr.event.event_details.durata_minuti || 0), 0);
 
     useEffect(() => {

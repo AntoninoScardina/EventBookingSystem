@@ -10,15 +10,9 @@ import {
   ChevronLeft,
   Ticket,
   Users as UsersIcon,
-  Edit3,
-  Globe,
-  Building,
-  Landmark,
-  Film as FilmIcon,
+  Film,
   AlertTriangle,
   CheckCircle2,
-  Film,
-  Users,
 } from "lucide-react";
 
 interface EventDetailProps {
@@ -26,6 +20,12 @@ interface EventDetailProps {
   onSelectProjection: (projection: ProgrammazioneItem) => void;
   onBack: () => void;
 }
+
+const decodeHtml = (html: string) => {
+  const txt = document.createElement("textarea");
+  txt.innerHTML = html;
+  return txt.value;
+};
 
 const DetailItem: React.FC<{
   label: string;
@@ -56,27 +56,9 @@ const DetailItem: React.FC<{
   );
 };
 
-const decodeHtml = (html: string) => {
-  const txt = document.createElement("textarea");
-  txt.innerHTML = html;
-  return txt.value;
-};
 
-const EventDetail: React.FC<{ event: BaariaEvent; onSelectProjection: (projection: ProgrammazioneItem) => void; onBack: () => void; }> = ({ event, onSelectProjection, onBack }) => {
+const EventDetail: React.FC<EventDetailProps> = ({ event, onSelectProjection, onBack }) => {
     const details: EventDetails | undefined = event.event_details;
-    const decodeHtml = (html: string) => { const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value; };
-    const DetailItem: React.FC<{label: string; value?: string | number | null | boolean; icon?: React.ElementType; isHtml?: boolean;}> = ({ label, value, icon: Icon, isHtml }) => {
-        if (value === undefined || value === null || value === "") return null;
-        return (
-            <div className="flex items-start py-2">
-                {Icon && <Icon size={18} className="mr-3 mt-1 text-[#ebdaa8] flex-shrink-0" />}
-                <div>
-                    <span className="font-semibold text-gray-200">{label}: </span>
-                    {isHtml && typeof value === "string" ? <span className="text-gray-300" dangerouslySetInnerHTML={{ __html: value }} /> : <span className="text-gray-300">{typeof value === "boolean" ? (value ? "Sì" : "No") : value}</span>}
-                </div>
-            </div>
-        );
-    };
 
     if (!details) {
         return (
@@ -130,7 +112,7 @@ const EventDetail: React.FC<{ event: BaariaEvent; onSelectProjection: (projectio
                     <h3 className="text-2xl font-semibold text-gray-100 mb-4 flex items-center"><Info size={24} className="mr-2 text-[#ebdaa8]" />Crediti e Dettagli</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-gray-300">
                         <DetailItem label="Regia" value={details.regia} icon={Film} />
-                        <DetailItem label="Cast" value={details.cast} icon={Users} />
+                        <DetailItem label="Cast" value={details.cast} icon={UsersIcon} />
                     </div>
                 </div>
                 {details.galleria_immagini && details.galleria_immagini.length > 0 && (
@@ -147,12 +129,7 @@ const EventDetail: React.FC<{ event: BaariaEvent; onSelectProjection: (projectio
                 )}
                 <div className="p-6 md:p-8 border-t border-gray-700/50">
                     <h3 className="text-2xl font-semibold text-gray-100 mb-5 flex items-center"><CalendarDays size={24} className="mr-2 text-[#ebdaa8]" />Programmazione e Prenotazioni</h3>
-                    {details.booking_status_message && (
-                        <div className={`mb-4 p-4 border rounded-md flex items-center gap-3 shadow ${details.booking_not_required ? "bg-blue-800/30 border-blue-700 text-blue-300" : !details.bookings_enabled ? "bg-yellow-800/30 border-yellow-700 text-yellow-300" : "bg-green-800/30 border-green-700 text-green-300"}`}>
-                            {details.booking_not_required ? <CheckCircle2 size={20} /> : !details.bookings_enabled ? <AlertTriangle size={20} /> : <Ticket size={20} />}
-                            <p>{details.booking_status_message}</p>
-                        </div>
-                    )}
+                    
                     {details.programmazione && details.programmazione.length > 0 ? (
                         <div className="space-y-4">
                             {details.programmazione.map((prog) => (
@@ -160,8 +137,12 @@ const EventDetail: React.FC<{ event: BaariaEvent; onSelectProjection: (projectio
                                     <div className="flex-grow">
                                         <p className="font-semibold text-lg text-gray-100">{prog.data_formattata} - Ore {prog.orario}</p>
                                         <p className="text-gray-300 flex items-center text-sm"><MapPin size={14} className="mr-1.5 flex-shrink-0" />{prog.location_nome}{prog.location_citta ? `, ${prog.location_citta}` : ""}</p>
+                                        <div className={`mt-2 p-2 border rounded-md flex items-center gap-3 text-sm shadow-inner ${prog.booking_not_required ? "bg-blue-800/20 border-blue-700/30 text-blue-300" : !prog.bookings_enabled ? "bg-yellow-800/20 border-yellow-700/30 text-yellow-300" : "bg-green-800/20 border-green-700/30 text-green-300"}`}>
+                                            {prog.booking_not_required ? <CheckCircle2 size={16} /> : !prog.bookings_enabled ? <AlertTriangle size={16} /> : <Ticket size={16} />}
+                                            <p>{prog.booking_status_message}</p>
+                                        </div>
                                     </div>
-                                    {details.bookings_enabled && !details.booking_not_required && (
+                                    {prog.bookings_enabled && !prog.booking_not_required && (
                                         <button onClick={() => onSelectProjection(prog)} className="w-full sm:w-auto mt-3 sm:mt-0 px-5 py-2.5 bg-[#ebdaa8] text-[#2d2d2d] rounded-md font-semibold hover:bg-opacity-90 transition-colors duration-200 flex items-center justify-center gap-2 text-sm shadow hover:shadow-lg">
                                             <Ticket size={16} /> Prenota Posti
                                         </button>

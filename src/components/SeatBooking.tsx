@@ -5,10 +5,9 @@ import { ProgrammazioneItem } from "../types";
 
 const SeatBooking: React.FC<{
   onProceedToCheckout: (quantity: number) => void;
-  movieId: number;
-  showtime: string;
+  proiezioneId: number;
   projection: ProgrammazioneItem;
-}> = ({ onProceedToCheckout, movieId, showtime, projection }) => {
+}> = ({ onProceedToCheckout, proiezioneId, projection }) => {
   const [quantity, setQuantity] = useState(1);
   const [occupiedSeats, setOccupiedSeats] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +62,11 @@ const SeatBooking: React.FC<{
 
   useEffect(() => {
     setLoading(true);
-    fetchOccupiedSeats(movieId, showtime)
+    fetchOccupiedSeats(proiezioneId)
       .then(setOccupiedSeats)
       .catch(() => setError("Errore nel caricamento dei posti."))
       .finally(() => setLoading(false));
-  }, [movieId, showtime]);
+  }, [proiezioneId]);
 
   const layout =
     seatLayouts[projection.location_type] || seatLayouts.cinema_capitol;
